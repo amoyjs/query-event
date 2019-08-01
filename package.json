@@ -1,0 +1,35 @@
+{
+  "name": "@amoy/query-event",
+  "moduleName": "queryEvent",
+  "version": "0.1.0",
+  "description": "A event extension for @amoy/query.",
+  "main": "dist/query-event.js",
+  "types": "src/types/index.d.ts",
+  "scripts": {
+    "start": "NODE_ENV=development rollup -w -c rollup.config.js",
+    "dev": "NODE_ENV=development rollup -c rollup.config.js",
+    "prod": "NODE_ENV=production rollup -c rollup.config.js",
+    "publish": "rm -rf dist && npm run dev && npm run prod"
+  },
+  "repository": {
+    "url": "https://github.com/amoyjs/query-event.git",
+    "type": "git"
+  },
+  "author": "大板栗 <576839360@qq.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "rollup-plugin-alias": "^1.5.2",
+    "rollup-plugin-babel-minify": "^9.0.0",
+    "rollup-plugin-commonjs": "^10.0.1",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-typescript": "^1.0.1",
+    "tslib": "^1.10.0",
+    "typescript": "^3.5.2"
+  },
+  "peerDependencies": {
+    "pixi.js": "^5.1.0"
+  },
+  "dependencies": {
+    "@amoy/common": "^1.0.1"
+  }
+}
