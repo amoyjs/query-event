@@ -1,7 +1,7 @@
 {
   "name": "@amoy/query-event",
   "moduleName": "queryEvent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A event extension for @amoy/query.",
   "main": "dist/query-event.js",
   "types": "src/types/index.d.ts",
@@ -27,9 +27,7 @@
     "typescript": "^3.5.2"
   },
   "peerDependencies": {
+    "@amoy/common": "^1.0.2",
     "pixi.js": "^5.1.0"
-  },
-  "dependencies": {
-    "@amoy/common": "^1.0.1"
   }
 }

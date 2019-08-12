@@ -1,3 +1,5 @@
+import { type } from '@amoy/common';
+
 var EventBus = /** @class */ (function () {
     function EventBus() {
         this.handlers = [];
@@ -32,20 +34,6 @@ var EventBus = /** @class */ (function () {
     };
     return EventBus;
 }());
-
-function type(object) {
-    var class2type = {};
-    var type = class2type.toString.call(object);
-    var typeString = 'Boolean Number String Function Array Date RegExp Object Error Symbol';
-    if (object == null)
-        return object + '';
-    typeString.split(' ').forEach(function (type) {
-        class2type["[object " + type + "]"] = type.toLowerCase();
-    });
-    var isObject = typeof object === 'object';
-    var isFn = typeof object === 'function';
-    return isObject || isFn ? class2type[type] || 'object' : typeof object;
-}
 
 var get = function (root, get) {
     if (type(root) !== 'object')
@@ -404,6 +392,26 @@ function off(target, evName, fn) {
     }
 }
 var event = {
+    /**
+     * on
+     *
+     * event(s) binding
+     *
+     * @module query
+     *
+     * @param { String } name - event name
+     * @param { Function } closure - event callback
+     *
+     * @example
+     *
+     * $(sprite).on('tap', () => {
+     *     console.log('tapped')
+     * })
+     * // bind two events meanwhile
+     * $(sprite).on('tap longtap', () => {
+     *     console.log('tap longtap')
+     * })
+     */
     on: function (name, closure) {
         if (name === void 0) { name = ''; }
         if (closure === void 0) { closure = function () { }; }
@@ -416,6 +424,21 @@ var event = {
         }
         return this;
     },
+    /**
+     * off
+     *
+     * event(s) unbinding
+     *
+     * @module query
+     *
+     * @param { String } name - event(s) name
+     *
+     * @example
+     *
+     * $(sprite).on('tap')
+     * // unbind two events meanwhile
+     * $(sprite).on('tap longtap')
+     */
     off: function (name) {
         if (name === void 0) { name = ''; }
         var events = name.split(' ');

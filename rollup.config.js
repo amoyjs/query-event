@@ -12,6 +12,9 @@ const output = options => ({
     name: moduleName,
     sourcemap: true,
     ...options,
+    globals: {
+        '@amoy/common': 'common',
+    },
 })
 
 const configure = {
@@ -31,7 +34,7 @@ const configure = {
         commonjs(),
         resolve(),
     ],
-    external: [],
+    external: ['@amoy/common'],
 }
 
 if (isProd) {

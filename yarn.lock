@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@amoy/common@^1.0.1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@amoy/common/-/common-1.0.1.tgz#23d0fe9614af7e92c043eed0c91b767b4c3c2a18"
-  integrity sha512-bSFetibHoziLmeE9tIvJp6agVyAPkKm2BG0EozBZh6h6nqTjL57dJLDPPV/gm3R+HQZBOasLbopEPE3FfRv6aQ==
+"@amoy/common@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@amoy/common/-/common-1.0.2.tgz#c8b7b74d3be75b5f1aee3a5b28bb6a2022c40b3c"
+  integrity sha512-TGXxG61q9lQfmXcU9bBk+o6xXfbCpLYQ+NYze0ZxWnwwDKL7lfBaJVkkYiKyAoXDVXFQJ4hTTryfVIvy7GgvqQ==
 
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.5.5":
   version "7.5.5"

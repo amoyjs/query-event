@@ -23,6 +23,26 @@ function off(target: any, evName: string, fn?: callback) {
 }
 
 export const event = {
+    /**
+     * on
+     * 
+     * event(s) binding
+     * 
+     * @module query
+     * 
+     * @param { String } name - event name
+     * @param { Function } closure - event callback
+     * 
+     * @example
+     * 
+     * $(sprite).on('tap', () => {
+     *     console.log('tapped')
+     * })
+     * // bind two events meanwhile
+     * $(sprite).on('tap longtap', () => {
+     *     console.log('tap longtap')
+     * })
+     */
     on(name: string = '', closure: () => void = () => { }) {
         const events = name.split(' ')
         for (let i = 0; i < this.length; i++) {
@@ -33,6 +53,21 @@ export const event = {
         }
         return this
     },
+    /**
+     * off
+     * 
+     * event(s) unbinding
+     * 
+     * @module query
+     * 
+     * @param { String } name - event(s) name
+     *
+     * @example
+     *
+     * $(sprite).on('tap')
+     * // unbind two events meanwhile
+     * $(sprite).on('tap longtap')
+     */
     off(name: string = '') {
         const events = name.split(' ')
         for (let i = 0; i < this.length; i++) {
