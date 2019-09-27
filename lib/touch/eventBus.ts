@@ -1,5 +1,3 @@
-import { QueryEvent } from '../types'
-
 export default class EventBus {
     private handlers: QueryEvent.Handler[] = []
     public add(handler: QueryEvent.Handler) {
@@ -16,10 +14,10 @@ export default class EventBus {
         }
         return this
     }
-    public fire(evObj: QueryEvent.RTouchEvent) {
+    public fire(evObj: QueryEvent.RTouchEvent, that?: any) {
         if (!this.handlers || !this.handlers.length) return
         this.handlers.map((handler) => {
-            if (typeof handler === 'function') handler(evObj)
+            if (typeof handler === 'function') handler.bind(that)(evObj)
         })
         return this
     }

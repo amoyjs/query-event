@@ -1,9 +1,30 @@
-import { QueryEvent } from '../types'
-import { get } from '../common'
+import { getValue } from '@amoy/common'
 
-export default {
+const u = { 
+    getCurTargetByEv(evTarget: any, ev: QueryEvent.PixiEvent) {
+        let curTarget
+        let maxZindex = 0
+        if (getValue(evTarget, 'children.length')) {
+            evTarget.children.map((child) => {
+                if (child.containsPoint) {
+                    if (child.containsPoint(ev.data.global) && child.zIndex >= maxZindex) {
+                        curTarget = child
+                        maxZindex = child.zIndex
+                    }
+                }
+            })
+        }
+
+        if (curTarget) {
+            const childCurTarget = u.getCurTargetByEv(curTarget, ev)
+            if (childCurTarget) {
+                curTarget = childCurTarget
+            }
+        }
+        return curTarget || evTarget
+    },
     getFingers(ev: QueryEvent.PixiEvent) {
-        return get(ev, 'data.originalEvent.touches.length') || 1
+        return getValue(ev, 'data.originalEvent.touches.length') || 1
     },
     getPoint(ev: QueryEvent.PixiEvent, index: 0 | 1) {
         if (ev.data.pointerType === 'touch') {
@@ -57,3 +78,5 @@ export default {
         }
     },
 }
+
+export default u

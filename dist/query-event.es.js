@@ -1,4 +1,4 @@
-import { type } from '@amoy/common';
+import { getValue } from '@amoy/common';
 
 var EventBus = /** @class */ (function () {
     function EventBus() {
@@ -20,12 +20,12 @@ var EventBus = /** @class */ (function () {
         }
         return this;
     };
-    EventBus.prototype.fire = function (evObj) {
+    EventBus.prototype.fire = function (evObj, that) {
         if (!this.handlers || !this.handlers.length)
             return;
         this.handlers.map(function (handler) {
             if (typeof handler === 'function')
-                handler(evObj);
+                handler.bind(that)(evObj);
         });
         return this;
     };
@@ -35,42 +35,43 @@ var EventBus = /** @class */ (function () {
     return EventBus;
 }());
 
-var get = function (root, get) {
-    if (type(root) !== 'object')
-        return root;
-    var value = root;
-    var keyArr = get.split('.');
-    for (var i = 0, l = keyArr.length; i < l; i++) {
-        var v = keyArr[i];
-        if (v) {
-            if (value[v]) {
-                value = value[v];
-            }
-            else {
-                value = undefined;
-                break;
+var u = {
+    getCurTargetByEv: function (evTarget, ev) {
+        var curTarget;
+        var maxZindex = 0;
+        if (getValue(evTarget, 'children.length')) {
+            evTarget.children.map(function (child) {
+                if (child.containsPoint) {
+                    if (child.containsPoint(ev.data.global) && child.zIndex >= maxZindex) {
+                        curTarget = child;
+                        maxZindex = child.zIndex;
+                    }
+                }
+            });
+        }
+        if (curTarget) {
+            var childCurTarget = u.getCurTargetByEv(curTarget, ev);
+            if (childCurTarget) {
+                curTarget = childCurTarget;
             }
         }
-    }
-    return value;
-};
-
-var u = {
+        return curTarget || evTarget;
+    },
     getFingers: function (ev) {
-        return get(ev, 'data.originalEvent.touches.length') || 1;
+        return getValue(ev, 'data.originalEvent.touches.length') || 1;
     },
     getPoint: function (ev, index) {
         if (ev.data.pointerType === 'touch') {
             var touches = ev.data.originalEvent.touches;
             return {
                 x: Math.round(touches[index].pageX),
-                y: Math.round(touches[index].pageY)
+                y: Math.round(touches[index].pageY),
             };
         }
         else {
             return {
                 x: Math.round(ev.data.global.x),
-                y: Math.round(ev.data.global.y)
+                y: Math.round(ev.data.global.y),
             };
         }
     },
@@ -111,9 +112,9 @@ var u = {
     getAnchorPoint: function (target) {
         return {
             x: target.x,
-            y: target.y
+            y: target.y,
         };
-    }
+    },
 };
 
 var RTOUCH_SUPPORT_EVENT = [
@@ -152,16 +153,16 @@ var RTOUCH_SUPPORT_EVENT = [
 // 挟持的原生事件
 var ORIGIN_EVENT_MAP = [{
         name: 'pointerdown',
-        fn: '_start'
+        fn: '_start',
     }, {
         name: 'pointermove',
-        fn: '_move'
+        fn: '_move',
     }, {
         name: 'pointerup',
-        fn: '_end'
+        fn: '_end',
     }, {
         name: 'pointerupoutside',
-        fn: '_end'
+        fn: '_end',
     }];
 // 事件中心
 var RTouch = /** @class */ (function () {
@@ -171,6 +172,7 @@ var RTouch = /** @class */ (function () {
         // 是否开始触摸
         // 用于解决 精灵区域外 move 也被触发的问题
         this.touching = false;
+        this.isSingleButton = false;
         this.Bus = {};
         this.target = target;
         // 初始化事件中心
@@ -193,12 +195,16 @@ var RTouch = /** @class */ (function () {
         });
     };
     RTouch.prototype._start = function (ev) {
+        var _this = this;
         this.touching = true;
         this.startTime = Date.now();
         this.fingers = u.getFingers(ev);
-        this.singleBasePoint = u.getAnchorPoint(this.target);
         // 记录第一触控点
         this.swipeStartPoint = this.startPoint = u.getPoint(ev, 0);
+        // 判断触控区域是否为单指操作的按钮
+        this.singleBasePoint = u.getAnchorPoint(this.target);
+        var curTarget = u.getCurTargetByEv(ev.target, ev);
+        this.isSingleButton = curTarget && (curTarget.name === 'singlebutton');
         if (this.fingers === 1) {
             // 单指且监听 singlePinch 时，计算向量模；
             var startVector = u.getVector(this.startPoint, this.singleBasePoint);
@@ -212,8 +218,15 @@ var RTouch = /** @class */ (function () {
             // 计算向量模
             this.pinchStartLength = u.getLength(this.vector1);
         }
+        // 触发长按
+        this.longtapTimer = setTimeout(function () {
+            _this.fireEvent('longtap', {
+                origin: ev,
+            });
+            _this.longtapTimer = null;
+        }, 1000);
         this.fireEvent('touchstart', {
-            origin: ev
+            origin: ev,
         });
     };
     RTouch.prototype._move = function (ev) {
@@ -231,31 +244,58 @@ var RTouch = /** @class */ (function () {
                 this.eventStart('pinch', {
                     origin: ev,
                     delta: {
-                        scale: pinchLength / this.pinchStartLength
-                    }
+                        scale: pinchLength / this.pinchStartLength,
+                    },
                 });
                 this.pinchStartLength = pinchLength;
             }
             if (this.vector1) {
                 this.eventStart('rotate', {
                     delta: {
-                        rotate: u.getAngle(this.vector1, vector2)
+                        rotate: u.getAngle(this.vector1, vector2),
                     },
-                    origin: ev
+                    origin: ev,
                 });
                 this.vector1 = vector2;
+            }
+        }
+        else {
+            // 触发 单指缩放
+            if (this.isSingleButton) {
+                var pinchV2 = u.getVector(curPoint, this.singleBasePoint);
+                var singlePinchLength = u.getLength(pinchV2);
+                this.eventStart('singlepinch', {
+                    delta: {
+                        scale: singlePinchLength / this.singlePinchStartLength,
+                        deltaX: curPoint.x - this.startPoint.x,
+                        deltaY: curPoint.y - this.startPoint.y,
+                    },
+                    origin: ev,
+                });
+                this.singlePinchStartLength = singlePinchLength;
+            }
+            // 触发 单指旋转;
+            if (this.isSingleButton) {
+                var rotateV1 = u.getVector(this.startPoint, this.singleBasePoint);
+                var rotateV2 = u.getVector(curPoint, this.singleBasePoint);
+                this.eventStart('singlerotate', {
+                    delta: {
+                        rotate: u.getAngle(rotateV1, rotateV2),
+                    },
+                    origin: ev,
+                });
             }
         }
         // 触发 drag
         this.eventStart('drag', {
             delta: {
                 x: curPoint.x - this.startPoint.x,
-                y: curPoint.y - this.startPoint.y
+                y: curPoint.y - this.startPoint.y,
             },
-            origin: ev
+            origin: ev,
         });
         this.fireEvent('touchmove', {
-            origin: ev
+            origin: ev,
         });
         this.startPoint = curPoint;
     };
@@ -267,13 +307,13 @@ var RTouch = /** @class */ (function () {
         evArr.map(function (evName) {
             _this.eventEnd(evName, {
                 origin: ev,
-                type: evName
+                type: evName,
             });
         });
         if (this.swipeStartPoint) {
             var endPoint = {
                 x: Math.round(ev.data.global.x),
-                y: Math.round(ev.data.global.y)
+                y: Math.round(ev.data.global.y),
             };
             var deltaX = endPoint.x - this.swipeStartPoint.x;
             var deltaY = endPoint.y - this.swipeStartPoint.y;
@@ -300,20 +340,18 @@ var RTouch = /** @class */ (function () {
                     // 触发短点击
                     eventType = 'shorttap';
                 }
-                else {
-                    // 触发长按
-                    eventType = 'longtap';
-                }
             }
             if (eventType) {
                 this.fireEvent(eventType, {
-                    origin: ev
+                    origin: ev,
                 });
             }
         }
         this.fireEvent('touchend', {
-            origin: ev
+            origin: ev,
         });
+        if (this.longtapTimer)
+            clearTimeout(this.longtapTimer);
     };
     RTouch.prototype.fireEvent = function (evName, ev) {
         if (this.Bus[evName]) {
@@ -321,8 +359,8 @@ var RTouch = /** @class */ (function () {
                 type: evName,
                 stopPropagation: function () {
                     ev.origin.stopPropagation();
-                }
-            }));
+                },
+            }), this.target);
         }
     };
     RTouch.prototype.destory = function () {
@@ -371,7 +409,7 @@ var RTouch = /** @class */ (function () {
     return RTouch;
 }());
 
-function bind(target, evName, fn) {
+function on(target, evName, fn) {
     if (RTOUCH_SUPPORT_EVENT.includes(evName)) {
         if (!target['RTouch'])
             target['RTouch'] = new RTouch(target);
@@ -381,6 +419,7 @@ function bind(target, evName, fn) {
         target.interactive = true;
         target.on(evName, fn);
     }
+    return target;
 }
 function off(target, evName, fn) {
     if (RTOUCH_SUPPORT_EVENT.includes(evName) && target['RTouch']) {
@@ -390,28 +429,9 @@ function off(target, evName, fn) {
         target.interactive = true;
         target.off(evName, fn);
     }
+    return target;
 }
-var event = {
-    /**
-     * on
-     *
-     * event(s) binding
-     *
-     * @module query
-     *
-     * @param { String } name - event name
-     * @param { Function } closure - event callback
-     *
-     * @example
-     *
-     * $(sprite).on('tap', () => {
-     *     console.log('tapped')
-     * })
-     * // bind two events meanwhile
-     * $(sprite).on('tap longtap', () => {
-     *     console.log('tap longtap')
-     * })
-     */
+var queryEvent = {
     on: function (name, closure) {
         if (name === void 0) { name = ''; }
         if (closure === void 0) { closure = function () { }; }
@@ -419,26 +439,11 @@ var event = {
         for (var i = 0; i < this.length; i++) {
             for (var j = 0; j < events.length; j++) {
                 this[i].interactive = true;
-                bind(this[i], events[j], closure);
+                on(this[i], events[j], closure);
             }
         }
         return this;
     },
-    /**
-     * off
-     *
-     * event(s) unbinding
-     *
-     * @module query
-     *
-     * @param { String } name - event(s) name
-     *
-     * @example
-     *
-     * $(sprite).on('tap')
-     * // unbind two events meanwhile
-     * $(sprite).on('tap longtap')
-     */
     off: function (name) {
         if (name === void 0) { name = ''; }
         var events = name.split(' ');
@@ -449,12 +454,9 @@ var event = {
             }
         }
         return this;
-    }
+    },
 };
-// @ts-ignore
-if (window.query)
-    window.query.extend(event);
 
-export default event;
-export { event };
+export default queryEvent;
+export { RTOUCH_SUPPORT_EVENT, off, on, queryEvent };
 //# sourceMappingURL=query-event.es.js.map

@@ -1,5 +1,4 @@
 import * as PIXI from 'pixi.js'
-import { QueryEvent } from '../types'
 import EventBus from './eventBus'
 import u from './utils'
 
@@ -72,8 +71,12 @@ export default class RTouch {
     // 是否开始触摸
     // 用于解决 精灵区域外 move 也被触发的问题
     private touching: boolean = false
+
+    private isSingleButton: boolean = false
     private singleBasePoint: QueryEvent.Point
     private singlePinchStartLength: number
+
+    private longtapTimer
     private Bus: {
         [evName: string]: EventBus,
     } = {}
@@ -99,9 +102,13 @@ export default class RTouch {
         this.touching = true
         this.startTime = Date.now()
         this.fingers = u.getFingers(ev)
-        this.singleBasePoint = u.getAnchorPoint(this.target)
         // 记录第一触控点
         this.swipeStartPoint = this.startPoint = u.getPoint(ev, 0)
+        
+        // 判断触控区域是否为单指操作的按钮
+        this.singleBasePoint = u.getAnchorPoint(this.target)
+        const curTarget = u.getCurTargetByEv(ev.target, ev)
+        this.isSingleButton = curTarget && (curTarget.name === 'singlebutton')
 
         if (this.fingers === 1) {
             // 单指且监听 singlePinch 时，计算向量模；
@@ -116,6 +123,14 @@ export default class RTouch {
             this.pinchStartLength = u.getLength(this.vector1)
         }
 
+        // 触发长按
+        this.longtapTimer = setTimeout(() => {
+            this.fireEvent('longtap', {
+                origin: ev,
+            })
+            this.longtapTimer = null
+        }, 1000)
+
         this.fireEvent('touchstart', {
             origin: ev,
         })
@@ -123,9 +138,7 @@ export default class RTouch {
     public _move(ev: QueryEvent.PixiEvent) {
         if (!this.touching) return
         const curPoint = u.getPoint(ev, 0)
-        // 判断触控区域是否为单指操作的按钮
-        // const isSingleButton = ev.tapTarget.name === 'singlebutton'
-        const isSingleButton = false
+        
         if (!this.startPoint) this.startPoint = curPoint
         if (this.fingers > 1) {
             // 双指操作， 触发 pinch 与 rotate
@@ -154,7 +167,7 @@ export default class RTouch {
             }
         } else {
             // 触发 单指缩放
-            if (isSingleButton) {
+            if (this.isSingleButton) {
                 const pinchV2 = u.getVector(curPoint, this.singleBasePoint)
                 const singlePinchLength = u.getLength(pinchV2)
 
@@ -169,7 +182,7 @@ export default class RTouch {
                 this.singlePinchStartLength = singlePinchLength
             }
             // 触发 单指旋转;
-            if (isSingleButton) {
+            if (this.isSingleButton) {
                 const rotateV1 = u.getVector(this.startPoint, this.singleBasePoint)
                 const rotateV2 = u.getVector(curPoint, this.singleBasePoint)
 
@@ -234,9 +247,6 @@ export default class RTouch {
                 if (endTime - this.startTime < 500) {
                     // 触发短点击
                     eventType = 'shorttap'
-                } else {
-                    // 触发长按
-                    eventType = 'longtap'
                 }
             }
 
@@ -250,6 +260,8 @@ export default class RTouch {
         this.fireEvent('touchend', {
             origin: ev,
         })
+
+        if (this.longtapTimer) clearTimeout(this.longtapTimer)
     }
     private fireEvent(evName: string, ev: {
         origin: QueryEvent.PixiEvent,
@@ -261,7 +273,7 @@ export default class RTouch {
                 stopPropagation() {
                     ev.origin.stopPropagation()
                 },
-            }))
+            }), this.target)
         }
     }
     public destory() {

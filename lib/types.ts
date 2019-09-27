@@ -1,4 +1,4 @@
-export namespace QueryEvent {
+declare namespace QueryEvent {
     export type Handler = (e: object) => void
     export interface RTouchEvent {
         origin: PixiEvent
@@ -22,4 +22,15 @@ export namespace QueryEvent {
         x: number
         y: number
     }
+}
+
+type callback = (ev: QueryEvent.RTouchEvent) => void
+declare module '@amoy/event' {
+    function on(target: any, evName: string, fn: callback): any
+    function off(target: any, evName: string, fn?: callback): any
+    const queryEvent: {
+        on: (name: string, closure: () => void) => any,
+        off: (name: string) => any,
+    }
+    const RTOUCH_SUPPORT_EVENT: string[]
 }
